@@ -9,6 +9,7 @@ export interface ChatMessage {
     otherAgentName: string;
   };
   screenshot?: string;
+  liveViewUrl?: string;
   data?: Record<string, any>;
 }
 

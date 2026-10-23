@@ -70,31 +70,39 @@ export function AgentChatSurface({ session, onSendMessage, onUpdateSessionMessag
         const missionId = launchRes.missionId;
 
         // 3. Poll for real execution findings
+        let isDone = false;
         const pollInterval = setInterval(async () => {
+          if (isDone) {
+            clearInterval(pollInterval);
+            return;
+          }
+
           const pollRes = await pollBrowserTaskStatus(missionId);
           if (pollRes.ok && pollRes.mission) {
             const m = pollRes.mission;
 
-            if (m.status === "completed") {
+            if (m.status === "completed" && !isDone) {
+              isDone = true;
               clearInterval(pollInterval);
               setLiveStatus(null);
               setIsProcessing(false);
 
-              const summaryText = m.result?.summary || `I finished inspecting ${targetUrl}. Loaded the page cleanly over CDP, parsed all elements, and captured the viewport screenshot.`;
-              const findings = m.result?.findings;
+              const summaryText = m.result?.summary || `I finished inspecting ${targetUrl}. Loaded the page over cloud Chromium, verified the DOM, and captured the viewport screenshot.`;
               const screenshotUrl = m.result?.screenshots?.[0]?.url;
+              const liveView = m.result?.liveDebuggerUrl || (typeof m.result?.findings?.live_view === "string" && m.result?.findings?.live_view.startsWith("http") ? m.result.findings.live_view : undefined);
 
               const agentReply: ChatMessage = {
                 id: `agent_${Date.now()}`,
                 sender: "agent",
                 text: summaryText,
                 timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
-                data: findings,
                 screenshot: screenshotUrl,
+                liveViewUrl: liveView,
               };
 
               onUpdateSessionMessages([...updatedMessages, agentReply], newTitle);
-            } else if (m.status === "failed" || m.status === "cancelled") {
+            } else if ((m.status === "failed" || m.status === "cancelled") && !isDone) {
+              isDone = true;
               clearInterval(pollInterval);
               setLiveStatus(null);
               setIsProcessing(false);
@@ -215,30 +223,18 @@ export function AgentChatSurface({ session, onSendMessage, onUpdateSessionMessag
                     </div>
                   )}
 
-                  {/* Extracted Data Card */}
-                  {msg.data && (
-                    <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 font-mono text-xs space-y-1.5 mt-2">
-                      {msg.data.live_view && typeof msg.data.live_view === "string" && msg.data.live_view.startsWith("http") && (
-                        <div className="pb-2 border-b border-neutral-200 dark:border-neutral-800 mb-2">
-                          <a
-                            href={msg.data.live_view}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs font-semibold transition-colors"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            <span>Open Live Interactive Chrome Session</span>
-                          </a>
-                        </div>
-                      )}
-                      {Object.entries(msg.data)
-                        .filter(([k]) => k !== "live_view")
-                        .map(([k, v]) => (
-                          <div key={k} className="flex justify-between gap-3">
-                            <span className="text-neutral-400">{k.replace(/_/g, " ")}:</span>
-                            <span className="text-neutral-800 dark:text-neutral-200 truncate">{String(v)}</span>
-                          </div>
-                        ))}
+                  {/* Live Interactive Computer Action */}
+                  {msg.liveViewUrl && (
+                    <div className="pt-1">
+                      <a
+                        href={msg.liveViewUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-neutral-100 hover:bg-neutral-200 dark:bg-neutral-800 dark:hover:bg-neutral-700 text-neutral-800 dark:text-neutral-200 border border-neutral-300 dark:border-neutral-700 text-xs font-semibold transition-colors shadow-sm"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 text-blue-500" />
+                        <span>Open Live Cloud Chrome</span>
+                      </a>
                     </div>
                   )}
 
