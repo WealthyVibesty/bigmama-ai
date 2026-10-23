@@ -4,98 +4,22 @@ import { ChatSession, ChatMessage } from "./types";
 import { AgentSidebar } from "./components/AgentSidebar";
 import { AgentChatSurface } from "./components/AgentChatSurface";
 
-const STORAGE_KEY = "bigmama_chat_sessions_v1";
+const STORAGE_KEY = "bigmama_chat_sessions_v3";
 
 const DEFAULT_SESSIONS: ChatSession[] = [
   {
-    id: "session_delegator",
-    title: "Delegator 3",
+    id: "session_01",
+    title: "Computer 01",
     computerId: "01",
-    iconColor: "#ef4444", // Red matching screenshot
-    lastMessage: "I'm checking what's changed since Oct 18: what's been merged...",
+    iconColor: "#ef4444",
+    lastMessage: "Computer #01 is online and ready.",
     updatedAt: new Date().toISOString(),
     messages: [
       {
-        id: "msg_1",
+        id: "msg_init",
         sender: "agent",
-        interAgentInfo: {
-          type: "from",
-          otherAgentName: "BIG AI BRAND APP ANTIGRAVITY IDE",
-        },
-        text: "One heads-up on the UGC switch. When its test is done, the coding bot will ask you for a one-tap OK in its own chat before it merges, so keep an eye out for that.",
-        timestamp: "Today 2:14 PM",
-      },
-      {
-        id: "msg_2",
-        sender: "agent",
-        interAgentInfo: {
-          type: "to",
-          otherAgentName: "BIG AI BRAND APP ANTIGRAVITY IDE",
-        },
-        text: "The ad card polish (#459) is clear to merge, and it's on both test copies now (the ad writer at v36 and the image function at v15). The crash is fixed, card prices only come from your saved offers, billing hasn't changed, and no other clients' details are left in the code.\n\nThe coding bot is running one last paid test now. Then it'll ask you to OK the merge, and I'll put both live.",
-        timestamp: "Today 2:16 PM",
-      },
-      {
-        id: "msg_3",
-        sender: "user",
-        text: "wake up pull in latest code we back to the bage",
-        timestamp: "Today 2:19 PM",
-      },
-      {
-        id: "msg_4",
-        sender: "agent",
-        text: "I'm here. I'm pulling the latest from main and checking where live stands now.\n\nI'm checking what's changed since Oct 18: what's been merged, where the ad card polish (#459) and UGC switch (#460) stand, what's live, and whether the app needs a publish. I'll send you one summary shortly.",
-        timestamp: "Today 2:19 PM",
-        statusBadge: "Checking the recent commits",
-      },
-    ],
-  },
-  {
-    id: "session_resend",
-    title: "resend",
-    computerId: "02",
-    iconColor: "#6b7280",
-    lastMessage: "Two smaller things. On Oct 14, Lov...",
-    updatedAt: new Date().toISOString(),
-    unread: true,
-    messages: [
-      {
-        id: "r_1",
-        sender: "agent",
-        text: "Two smaller things. On Oct 14, Lovable DNS verification completed cleanly.",
-        timestamp: "Oct 14",
-      },
-    ],
-  },
-  {
-    id: "session_hyperframes",
-    title: "hyperframes",
-    computerId: "03",
-    iconColor: "#4b5563",
-    lastMessage: "The vertical video file was too big to a...",
-    updatedAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "h_1",
-        sender: "agent",
-        text: "The vertical video file was too big to attach directly, so I uploaded it to the cloud sandbox.",
-        timestamp: "Oct 15",
-      },
-    ],
-  },
-  {
-    id: "session_dealmaker",
-    title: "Deal Maker",
-    computerId: "04",
-    iconColor: "#10b981",
-    lastMessage: "All four posts for this week are in the...",
-    updatedAt: new Date().toISOString(),
-    messages: [
-      {
-        id: "d_1",
-        sender: "agent",
-        text: "All four posts for this week are in the queue. Checked engagement on competitor profiles.",
-        timestamp: "Oct 16",
+        text: "Computer #01 is online and connected over cloud Chromium CDP.\n\nDrop in any URL or tell me what to do on the web (e.g. \"open google chrome\", \"check stripe.com/pricing\", \"pull page content\").",
+        timestamp: "Just now",
       },
     ],
   },

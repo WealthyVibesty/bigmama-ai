@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from "react";
-import { Plus, Smile, RotateCcw, MoreHorizontal, Mic, Maximize2, X } from "lucide-react";
+import { Plus, Smile, RotateCcw, MoreHorizontal, Mic, Maximize2, X, ExternalLink } from "lucide-react";
 import { ChatSession, ChatMessage } from "../types";
 import { planBrowserTask, launchBrowserTask, pollBrowserTaskStatus } from "../lib/browserTasksApi";
 
@@ -217,13 +217,28 @@ export function AgentChatSurface({ session, onSendMessage, onUpdateSessionMessag
 
                   {/* Extracted Data Card */}
                   {msg.data && (
-                    <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 font-mono text-xs space-y-1 mt-2">
-                      {Object.entries(msg.data).map(([k, v]) => (
-                        <div key={k} className="flex justify-between gap-3">
-                          <span className="text-neutral-400">{k.replace(/_/g, " ")}:</span>
-                          <span className="text-neutral-800 dark:text-neutral-200 truncate">{String(v)}</span>
+                    <div className="p-3.5 rounded-xl border border-neutral-200 dark:border-neutral-800 bg-neutral-50 dark:bg-neutral-900/60 font-mono text-xs space-y-1.5 mt-2">
+                      {msg.data.live_view && typeof msg.data.live_view === "string" && msg.data.live_view.startsWith("http") && (
+                        <div className="pb-2 border-b border-neutral-200 dark:border-neutral-800 mb-2">
+                          <a
+                            href={msg.data.live_view}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-teal-500/10 hover:bg-teal-500/20 text-teal-400 border border-teal-500/30 text-xs font-semibold transition-colors"
+                          >
+                            <ExternalLink className="h-3.5 w-3.5" />
+                            <span>Open Live Interactive Chrome Session</span>
+                          </a>
                         </div>
-                      ))}
+                      )}
+                      {Object.entries(msg.data)
+                        .filter(([k]) => k !== "live_view")
+                        .map(([k, v]) => (
+                          <div key={k} className="flex justify-between gap-3">
+                            <span className="text-neutral-400">{k.replace(/_/g, " ")}:</span>
+                            <span className="text-neutral-800 dark:text-neutral-200 truncate">{String(v)}</span>
+                          </div>
+                        ))}
                     </div>
                   )}
 
