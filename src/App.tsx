@@ -1,209 +1,134 @@
-import { useState, useEffect, useRef } from "react";
-import { Toaster, toast } from "sonner";
-import { BigMamaNavbar } from "./components/BigMamaNavbar";
-import { BigMamaHero } from "./components/BigMamaHero";
-import { PlanApprovalModal } from "./components/PlanApprovalModal";
-import { LiveConsoleTicker } from "./components/LiveConsoleTicker";
-import { MissionReport } from "./components/MissionReport";
-import { 
-  planBrowserTask, 
-  launchBrowserTask, 
-  pollBrowserTaskStatus, 
-  confirmBrowserTaskGate, 
-  cancelBrowserTask, 
-  BrowserTaskPlan, 
-  BrowserTaskMission 
-} from "./lib/browserTasksApi";
+import { useState } from "react";
+import { Toaster } from "sonner";
+import { BROWSER_AGENTS } from "./data/browserAgents";
+import { BrowserAgent, ChatMessage } from "./types";
+import { AgentSidebar } from "./components/AgentSidebar";
+import { AgentChatSurface } from "./components/AgentChatSurface";
+
+const INITIAL_MESSAGES: Record<string, ChatMessage[]> = {
+  "delegator-3": [
+    {
+      id: "msg_1",
+      sender: "agent",
+      agentId: "brandapp-ide",
+      interAgentInfo: {
+        type: "from",
+        otherAgentName: "BIG AI BRAND APP ANTIGRAVITY IDE",
+      },
+      text: "One heads-up on the UGC switch. When its test is done, the coding bot will ask you for a one-tap OK in its own chat before it merges, so keep an eye out for that.",
+      timestamp: "Today 2:14 PM",
+    },
+    {
+      id: "msg_2",
+      sender: "agent",
+      agentId: "brandapp-ide",
+      interAgentInfo: {
+        type: "to",
+        otherAgentName: "BIG AI BRAND APP ANTIGRAVITY IDE",
+      },
+      text: "The ad card polish (#459) is clear to merge, and it's on both test copies now (the ad writer at v36 and the image function at v15). The crash is fixed, card prices only come from your saved offers, billing hasn't changed, and no other clients' details are left in the code.\n\nThe coding bot is running one last paid test now. Then it'll ask you to OK the merge, and I'll put both live.",
+      timestamp: "Today 2:16 PM",
+    },
+    {
+      id: "msg_3",
+      sender: "user",
+      text: "wake up pull in latest code we back to the bage",
+      timestamp: "Today 2:19 PM",
+    },
+    {
+      id: "msg_4",
+      sender: "agent",
+      agentId: "delegator-3",
+      agentName: "Delegator 3",
+      text: "I'm here. I'm pulling the latest from main and checking where live stands now.\n\nI'm checking what's changed since Oct 18: what's been merged, where the ad card polish (#459) and UGC switch (#460) stand, what's live, and whether the app needs a publish. I'll send you one summary shortly.",
+      timestamp: "Today 2:19 PM",
+      statusBadge: "Checking the recent commits",
+    },
+  ],
+};
 
 export default function App() {
-  const [stage, setStage] = useState<"hero" | "running" | "report">("hero");
-  const [isPlanning, setIsPlanning] = useState(false);
-  const [isLaunching, setIsLaunching] = useState(false);
-  const [isConfirmingGate, setIsConfirmingGate] = useState(false);
+  const [agents] = useState<BrowserAgent[]>(BROWSER_AGENTS);
+  const [activeAgent, setActiveAgent] = useState<BrowserAgent>(BROWSER_AGENTS[0]);
+  const [chatHistories, setChatHistories] = useState<Record<string, ChatMessage[]>>(INITIAL_MESSAGES);
 
-  const [activePlan, setActivePlan] = useState<BrowserTaskPlan | null>(null);
-  const [activePrompt, setActivePrompt] = useState("");
-  const [activeTargetUrl, setActiveTargetUrl] = useState("");
-  const [activeMission, setActiveMission] = useState<BrowserTaskMission | null>(null);
+  const currentMessages = chatHistories[activeAgent.id] || [
+    {
+      id: `welcome_${activeAgent.id}`,
+      sender: "agent",
+      agentId: activeAgent.id,
+      agentName: activeAgent.name,
+      text: `Hello! I am your ${activeAgent.name}. Send me any URL or web task to inspect over our cloud Chromium browser.`,
+      timestamp: "Just now",
+    },
+  ];
 
-  const pollIntervalRef = useRef<number | null>(null);
-
-  // Clean up poll interval on unmount
-  useEffect(() => {
-    return () => {
-      if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
+  const handleSendMessage = (text: string) => {
+    const newMsg: ChatMessage = {
+      id: `user_${Date.now()}`,
+      sender: "user",
+      text,
+      timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
     };
-  }, []);
 
-  // Step 1: User submits prompt/URL -> generate Plan
-  const handlePlanTask = async (prompt: string, targetUrl: string) => {
-    setIsPlanning(true);
-    setActivePrompt(prompt);
-    setActiveTargetUrl(targetUrl);
-
-    const res = await planBrowserTask(prompt, targetUrl);
-    setIsPlanning(false);
-
-    if (!res.ok || !res.plan) {
-      toast.error(res.error || "Failed to generate execution plan.");
-      return;
-    }
-
-    setActivePlan(res.plan);
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeAgent.id]: [...(prev[activeAgent.id] || []), newMsg],
+    }));
   };
 
-  // Step 2: Gate 1 Approved -> Launch Cloud Chromium
-  const handleApprovePlan = async () => {
-    if (!activePlan) return;
-    setIsLaunching(true);
+  const handleUpdateMessage = (id: string, updates: Partial<ChatMessage>) => {
+    setChatHistories((prev) => {
+      const currentList = prev[activeAgent.id] || [];
+      const existingIdx = currentList.findIndex((m) => m.id === id);
 
-    const res = await launchBrowserTask(activePlan, activePrompt, activeTargetUrl);
-    setIsLaunching(false);
-
-    if (!res.ok || !res.missionId) {
-      toast.error(res.error || "Failed to launch cloud browser session.");
-      return;
-    }
-
-    // Set initial mission and enter running stage
-    setActiveMission({
-      id: res.missionId,
-      type: "web_execution",
-      status: "running",
-      prompt: activePrompt,
-      credit_cost: activePlan.creditCost,
-      logs: [
-        { step: "Session Request", message: "Plan approved. Requesting cloud Chromium session...", timestamp: new Date().toISOString() },
-        { step: "Cloud Sandbox", message: "Spinning up isolated Chromium instance over CDP...", timestamp: new Date().toISOString() },
-      ],
-      result: {
-        plan: activePlan,
-        targetUrl: activePlan.targetUrl,
-        vendorSessionId: res.vendorSessionId,
-        liveDebuggerUrl: res.liveDebuggerUrl,
-      },
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    });
-
-    setStage("running");
-    startPolling(res.missionId);
-    toast.success("Cloud browser session active. Executing DOM actions over CDP.");
-  };
-
-  // Step 3: Polling status
-  const startPolling = (missionId: string) => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-
-    pollIntervalRef.current = window.setInterval(async () => {
-      const res = await pollBrowserTaskStatus(missionId);
-      if (res.ok && res.mission) {
-        setActiveMission(res.mission);
-
-        if (res.mission.status === "completed") {
-          clearInterval(pollIntervalRef.current!);
-          setStage("report");
-          toast.success("Mission complete! Findings and screenshots extracted.");
-        } else if (res.mission.status === "failed") {
-          clearInterval(pollIntervalRef.current!);
-          toast.error("Mission failed. Check logs for details.");
-        } else if (res.mission.status === "cancelled") {
-          clearInterval(pollIntervalRef.current!);
-          setStage("hero");
-          toast.info("Mission was cancelled.");
-        }
+      if (existingIdx >= 0) {
+        const nextList = [...currentList];
+        nextList[existingIdx] = { ...nextList[existingIdx], ...updates };
+        return { ...prev, [activeAgent.id]: nextList };
+      } else {
+        return {
+          ...prev,
+          [activeAgent.id]: [...currentList, updates as ChatMessage],
+        };
       }
-    }, 2000);
+    });
   };
 
-  // Gate 2: Mid-run confirmation
-  const handleConfirmGate = async (confirmed: boolean) => {
-    if (!activeMission) return;
-    setIsConfirmingGate(true);
-    const res = await confirmBrowserTaskGate(activeMission.id, confirmed);
-    setIsConfirmingGate(false);
-
-    if (!res.ok) {
-      toast.error(res.error || "Failed to submit confirmation.");
-      return;
-    }
-
-    if (confirmed) {
-      toast.success("Gate 2 approved. Resuming browser execution.");
-    } else {
-      toast.info("Sensitive action denied. Cancelling task.");
-      setStage("hero");
-    }
-  };
-
-  // Stop/Cancel Task
-  const handleCancelTask = async () => {
-    if (!activeMission) {
-      setActivePlan(null);
-      return;
-    }
-
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    await cancelBrowserTask(activeMission.id);
-    setActiveMission(null);
-    setActivePlan(null);
-    setStage("hero");
-    toast.info("Mission stopped.");
-  };
-
-  // Reset to Hero for a new mission
-  const handleReset = () => {
-    if (pollIntervalRef.current) clearInterval(pollIntervalRef.current);
-    setActiveMission(null);
-    setActivePlan(null);
-    setStage("hero");
+  const handleNewChat = () => {
+    const welcomeMsg: ChatMessage = {
+      id: `new_${Date.now()}`,
+      sender: "agent",
+      agentId: activeAgent.id,
+      agentName: activeAgent.name,
+      text: `New cloud browser session initialized for ${activeAgent.name}. Drop in a target URL or type your objective.`,
+      timestamp: "Just now",
+    };
+    setChatHistories((prev) => ({
+      ...prev,
+      [activeAgent.id]: [welcomeMsg],
+    }));
   };
 
   return (
-    <div className="min-h-screen flex flex-col bg-neutral-950 text-neutral-100">
-      <Toaster position="top-right" theme="dark" richColors />
-      <BigMamaNavbar />
+    <div className="h-screen w-screen overflow-hidden flex bg-neutral-100 dark:bg-[#0c0c0c] font-sans antialiased">
+      <Toaster position="top-right" richColors theme="system" />
 
-      <main className="flex-1">
-        {stage === "hero" && (
-          <BigMamaHero onPlan={handlePlanTask} isPlanning={isPlanning} />
-        )}
+      {/* Left Sidebar (Agents List matching screenshot) */}
+      <AgentSidebar
+        agents={agents}
+        activeAgent={activeAgent}
+        onSelectAgent={setActiveAgent}
+        onNewChat={handleNewChat}
+      />
 
-        {stage === "running" && activeMission && (
-          <LiveConsoleTicker
-            mission={activeMission}
-            onConfirmGate={handleConfirmGate}
-            onCancel={handleCancelTask}
-            isConfirmingGate={isConfirmingGate}
-          />
-        )}
-
-        {stage === "report" && activeMission && (
-          <MissionReport mission={activeMission} onReset={handleReset} />
-        )}
-      </main>
-
-      {/* Plan Approval Modal (Gate 1) */}
-      {activePlan && stage === "hero" && (
-        <PlanApprovalModal
-          plan={activePlan}
-          onApprove={handleApprovePlan}
-          onCancel={() => setActivePlan(null)}
-          isLaunching={isLaunching}
-        />
-      )}
-
-      {/* Clean Footer */}
-      <footer className="border-t border-neutral-800/80 py-8 px-4 text-center text-xs text-neutral-500">
-        <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
-          <div className="flex items-center gap-2">
-            <span className="font-extrabold text-white">BIG MAMA AI</span>
-            <span>&bull;</span>
-            <span>bigmamaai.com</span>
-          </div>
-          <p>&copy; 2026 Big Mama AI. Powered by autonomous cloud Chromium reached over CDP.</p>
-        </div>
-      </footer>
+      {/* Right Chat Area (Conversational browser workspace) */}
+      <AgentChatSurface
+        agent={activeAgent}
+        messages={currentMessages}
+        onSendMessage={handleSendMessage}
+        onUpdateMessage={handleUpdateMessage}
+      />
     </div>
   );
 }
